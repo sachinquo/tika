@@ -111,7 +111,6 @@ public class ZipContainerDetectorTest extends TikaTest {
     }
 
     @Test
-    @Ignore("to be used for offline timing tests")
     public void timeDetection() throws Exception {
         TikaConfig config = TikaConfig.getDefaultConfig();
         Detector detector = config.getDetector();
@@ -119,16 +118,26 @@ public class ZipContainerDetectorTest extends TikaTest {
         List<File> zips = getTestZipBasedFiles(detector, registry);
 
         Set<MediaType> mediaTypeSet = new HashSet<>();
-        long stream = 0;
-        long file = 0;
-        for (int i = 0; i < 20; i++) {
+        long nonTikaStream = 0;
+        long tikaStream = 0;
+        long tikaStreamWFile = 0;
+        for (int i = 0; i < 10; i++) {
             for (File z : zips) {
                 long start = System.currentTimeMillis();
                 try (InputStream is = new BufferedInputStream(new FileInputStream(z))) {
                     MediaType mt = detector.detect(is, new Metadata());
                     mediaTypeSet.add(mt);
                 }
-                stream += System.currentTimeMillis()-start;
+                nonTikaStream += System.currentTimeMillis()-start;
+            }
+            for (File z : zips) {
+                long start = System.currentTimeMillis();
+                try (InputStream is = TikaInputStream.get(
+                        new BufferedInputStream(new FileInputStream(z)))) {
+                    MediaType mt = detector.detect(is, new Metadata());
+                    mediaTypeSet.add(mt);
+                }
+                tikaStream += System.currentTimeMillis()-start;
             }
 
             for (File z : zips) {
@@ -137,10 +146,10 @@ public class ZipContainerDetectorTest extends TikaTest {
                     MediaType mt = detector.detect(is, new Metadata());
                     mediaTypeSet.add(mt);
                 }
-                file += System.currentTimeMillis()-start;
+                tikaStreamWFile += System.currentTimeMillis()-start;
             }
         }
-        System.out.println("stream: "+stream + " file: "+file);
+        System.out.println("tika stream: "+tikaStream + " tika stream w file: "+tikaStreamWFile + " non tika stream:"+nonTikaStream);
     }
 
     @Test
